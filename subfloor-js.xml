@@ -1,0 +1,162 @@
+<!--===========================================================================
+Copyright (c) 2012, Pentaho Engineering Team
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the Pentaho Corporation nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY Pentaho Engineering Team ''AS IS'' AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+============================================================================-->
+<!--===========================================================================
+    == SUBFLOOR-JS ==
+
+    $Rev: 1 $
+    $Date: 2012-02-22 9:58:26 -0500 (Wed, 09 Dec 2009) $
+    Project Home: http://code.google.com/p/subfloor/
+
+    Provides default targets for creating application archives such as zip and tar.gzip
+    files.
+    ============================================================================-->
+
+<project name="subfloor-js" basedir="." default="default" xmlns:ivy="antlib:org.apache.ivy.ant">
+
+
+  <!-- Define the default location of the common build file -->
+  <property name="subfloor-js-pkg.file"
+            value="subfloor-pkg.xml"
+            description="This is the location of the subfloor-pkg.xml file"/>
+
+  <!-- Import the next subfloor instance, defaults to -pkg, but configurable -->
+  <echo message="JS importing pkg file: ${subfloor-js-pkg.file}"/>
+  <import file="${subfloor-js-pkg.file}" as="subfloor-js-pkg"/>
+
+
+  <property name="js-lib.dir" value="js-lib"/>
+
+  <!-- location of module scripts -->
+  <property name="module.script.dir" value="package-res/module-scripts"/>
+
+  <!-- directory to unzip all dependent JS zips -->
+  <property name="module.script.collected.dir" value="build-res/module-scripts"/>
+
+  <!-- Name of the jd build file -->
+  <property name="js.build.file" value="build-res/javascript.build.js"/>
+
+
+  <property name="package.artifact.pomfile"
+        value="package-js.xml"
+        description="The Maven pom file for project scripts" />
+
+  <target name="init" depends="subfloor-js-pkg.init">
+    <echo message="js: init"/>
+  </target>
+
+  <target name="clean" depends="subfloor.clean"
+          description="Cleans all the files generated from a build with the exception of IVY-downloaded jars (see clean-all)">
+    <delete dir="${module.script.collected.dir}"/>
+  </target>
+
+  <target name="resolve" depends="resolve-js,subfloor-js-pkg.resolve"
+          description="Resolves all IVY configurations"/>
+
+
+  <target name="resolve-js" depends="resolve-init">
+    <ivy:resolve file="ivy.xml" conf="js"/>
+    <ivy:retrieve conf="js" pattern="${js-lib.dir}/[module]-[revision](-[classifier]).[ext]"/>
+  </target>
+  <target name="clean-jars" depends="clean-js,subfloor.clean-jars"/>
+
+  <target name="clean-js">
+    <delete dir="${js-lib.dir}" />
+  </target>
+
+  <target name="build-js">
+    <delete dir="bin/common-ui-js-build"/>
+    <echo message="module.script.collected.dir: ${module.script.collected.dir}"/>
+    <mkdir dir="${module.script.collected.dir}" />
+    <copy todir="${module.script.collected.dir}">
+      <archives>
+        <zips>
+          <restrict>
+            <path path="${js-lib.dir}"/>
+            <name name="*.zip"/>
+          </restrict>
+        </zips>
+      </archives>
+    </copy>
+
+    <path id="build.classpath">
+      <!--<fileset dir="${module.script.collected.dir}/libs">-->
+        <!--<include name="*.jar" />-->
+      <!--</fileset>-->
+      <fileset dir="dev-lib/libs"> <!-- temporary until core build files in artifactory -->
+        <include name="*.jar" />
+      </fileset>
+    </path>
+
+    <!-- uncomment once core build in artifactory, placed in dev-lib for now -->
+    <!--<java classname="org.mozilla.javascript.tools.shell.Main"-->
+          <!--fork="true"-->
+          <!--classpathref="build.classpath"-->
+          <!--args="${module.script.collected.dir}/r.js -o ${js.build.file}">-->
+    <!--</java>-->
+    <java classname="org.mozilla.javascript.tools.shell.Main"
+      fork="true"
+      classpathref="build.classpath"
+      args="dev-lib/r.js -o ${js.build.file}">
+    </java>
+
+  </target>
+  <target name="dist-source" depends="dist-js, subfloor.dist-source">
+
+  </target>
+
+  <target name="dist-js">
+  <echo message="dist-js: ${module.script.dir}"/>
+    <zip destfile="${dist.dir}/${package.basename}-js.zip">
+      <zipfileset dir="${module.script.dir}" includes="**/*"/>
+    </zip>
+  </target>
+
+  <target name="assemble" depends="build-js,assemble.init,assemble.copy-libs">
+    <echo message="In JS assemble"/>
+      </target>
+
+  <target name="create-pom" depends="subfloor-pkg.create-pom">
+    <ivy:makepom ivyfile="${package.artifact.ivyfile}" pomfile="${package.js.pomfile}" />
+    <replace file="${package.js.pomfile}" token="jar" value="zip" />
+  </target>
+
+  <target name="publish-nojar" depends="install-antcontrib,create-pom,ivy.deliver,subfloor-pkg.publish-nojar">
+
+    <antcall target="maven-publish-artifact">
+      <param name="publish.pomFile" value="${package.js.pomfile}" />
+      <param name="publish.file" value="${dist.dir}/${ivy.artifact.id}-${project.revision}-js.zip" />
+    </antcall>
+  </target>
+
+  <target name="publish-local-nojar" depends="install-ivy,subfloor.publish-local-nojar">
+    <ivy:resolve file="${ivyfile}" />
+    <ivy:publish resolver="local" pubrevision="${project.revision}" overwrite="true" forcedeliver="true">
+      <artifacts pattern="${dist.dir}/[artifact]-[revision].[ext]" />
+    </ivy:publish>
+  </target>
+
+</project>
