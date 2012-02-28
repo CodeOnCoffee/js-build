@@ -38,14 +38,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 <project name="subfloor-js" basedir="." default="default" xmlns:ivy="antlib:org.apache.ivy.ant">
 
 
-  <!-- Define the default location of the common build file -->
-  <property name="subfloor-js-pkg.file"
-            value="subfloor-pkg.xml"
-            description="This is the location of the subfloor-pkg.xml file"/>
-
   <!-- Import the next subfloor instance, defaults to -pkg, but configurable -->
   <echo message="JS importing pkg file: ${subfloor-js-pkg.file}"/>
-  <import file="${subfloor-js-pkg.file}"/>
+  <import file="subfloor-pkg.xml"/>
 
 
   <property name="js-lib.dir" value="js-lib"/>
@@ -57,7 +52,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   <!-- directory to unzip all dependent JS zips -->
   <property name="module.script.collected.dir" value="build-res/module-scripts"/>
-  
+
   <property name="package.script.dest.dir" value="bin/stage/script"/>
 
   <property name="js.build.output.dir" value="bin/scriptOutput"/>
@@ -67,33 +62,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
   <property name="package.artifact.pomfile"
-        value="package-js.xml"
-        description="The Maven pom file for project scripts" />
+            value="package-js.xml"
+            description="The Maven pom file for project scripts" />
 
-  <target name="init" depends="subfloor.init">
-    <echo message="js: init"/>
-  </target>
-
-  <target name="clean" depends="subfloor.clean"
+  <target name="js.clean" extensionOf="clean"
           description="Cleans all the files generated from a build with the exception of IVY-downloaded jars (see clean-all)">
     <delete dir="${module.script.collected.dir}"/>
   </target>
 
-  <target name="resolve" depends="resolve-js,subfloor.resolve"
-          description="Resolves all IVY configurations"/>
-
-
-  <target name="resolve-js" depends="resolve-init">
+  <target name="resolve-js" extensionOf="resolve">
     <ivy:resolve file="ivy.xml" conf="js"/>
     <ivy:retrieve conf="js" pattern="${js-lib.dir}/[module]-[revision](-[classifier]).[ext]"/>
   </target>
-  <target name="clean-jars" depends="clean-js,subfloor.clean-jars"/>
 
-  <target name="clean-js">
+  <target name="clean-js" extensionOf="clean-jars">
     <delete dir="${js-lib.dir}" />
   </target>
 
-  <target name="build-js">
+  <target name="build-js" extensionOf="dist">
     <delete dir="bin/common-ui-js-build"/>
     <echo message="module.script.collected.dir: ${module.script.collected.dir}"/>
     <mkdir dir="${module.script.collected.dir}" />
@@ -118,14 +104,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     <!-- uncomment once core build in artifactory, placed in dev-lib for now -->
     <!--<java classname="org.mozilla.javascript.tools.shell.Main"-->
-          <!--fork="true"-->
-          <!--classpathref="build.classpath"-->
-          <!--args="${module.script.collected.dir}/r.js -o ${js.build.file}">-->
+    <!--fork="true"-->
+    <!--classpathref="build.classpath"-->
+    <!--args="${module.script.collected.dir}/r.js -o ${js.build.file}">-->
     <!--</java>-->
+    <mkdir dir="${js.build.output.dir}"/>
     <java classname="org.mozilla.javascript.tools.shell.Main"
-      fork="true"
-      classpathref="build.classpath"
-      args="build-res/pentaho-js-build/r.js -o ${js.build.file}">
+          fork="true"
+          classpathref="build.classpath"
+          args="build-res/pentaho-js-build/r.js -o ${js.build.file}">
     </java>
     <copy todir="${package.script.dest.dir}">
       <fileset dir="${js.build.output.dir}">
@@ -133,11 +120,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       </fileset>
     </copy>
   </target>
-  <target name="dist-source" depends="dist-js, subfloor.dist-source">
 
-  </target>
-
-  <target name="dist-js">
+  <target name="dist-js" extensionOf="dist-source">
     <echo message="dist-js: ${module.script.dir}"/>
     <mkdir dir="bin/js-source/${module.script.namespace}"/>
     <copy todir="bin/js-source/${module.script.namespace}">
@@ -151,12 +135,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     </zip>
   </target>
 
-  <target name="assemble" depends="subfloor-pkg.assemble,build-js">
-    <echo message="In JS assemble"/>
-  </target>
 
-
-  <target name="publish-nojar" depends="subfloor-pkg.publish-nojar">
+  <target name="pkg.publish-nojar" extensionOf="publish-nojar">
 
     <antcall target="maven-publish-js-source">
       <param name="publish.groupId" value="${ivy.artifact.group}" />
@@ -164,10 +144,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <param name="publish.version" value="${project.revision}" />
       <param name="publish.file" value="${dist.dir}/${ivy.artifact.id}-${project.revision}-js.zip" />
     </antcall>
-  </target>
-
-  <target name="publish-local-nojar" depends="subfloor-pkg.publish-local-nojar, subfloor.publish-local-nojar">
-    <echo message="JS: publish-local-nojar"/>
   </target>
 
   <target name="maven-publish-js-source" depends="install-antcontrib">
