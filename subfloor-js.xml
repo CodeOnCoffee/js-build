@@ -72,7 +72,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   <target name="resolve-js" extensionOf="resolve">
     <ivy:resolve file="ivy.xml" conf="js"/>
-    <ivy:retrieve conf="js" pattern="${js-lib.dir}/[module]-[revision](-[classifier]).[ext]"/>
+    <ivy:retrieve conf="js" pattern="${js-lib.dir}/[module]-[revision](-[classifier]).[ext]" symlink="${ivy.use.symlinks.internal}" />
   </target>
 
   <target name="clean-js" extensionOf="clean-jars">
